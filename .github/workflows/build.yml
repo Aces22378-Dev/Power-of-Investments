@@ -1,0 +1,53 @@
+name: Build apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+          - os: macos-latest
+            name: Mac
+          - os: ubuntu-latest
+            name: Linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build (Windows / Linux)
+        if: matrix.name != 'Mac'
+        run: pyinstaller --onefile --windowed --name PowerOfInvestments power_of_investments.py
+
+      - name: Build (Mac)
+        if: matrix.name == 'Mac'
+        run: |
+          pyinstaller --windowed --name PowerOfInvestments power_of_investments.py
+          ditto -c -k --keepParent dist/PowerOfInvestments.app dist/PowerOfInvestments-Mac.zip
+
+      - name: Upload Windows / Linux build
+        if: matrix.name != 'Mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerOfInvestments-${{ matrix.name }}
+          path: dist/PowerOfInvestments*
+
+      - name: Upload Mac build
+        if: matrix.name == 'Mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerOfInvestments-Mac
+          path: dist/PowerOfInvestments-Mac.zip
